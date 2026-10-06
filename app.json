@@ -1,44 +1,44 @@
-{
-  "expo": {
-    "name": "Le Soft",
-    "slug": "le-soft-ios",
-    "version": "1.0.0",
-    "orientation": "portrait",
-    "icon": "./assets/icon.png",
-    "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.lesoft.ios.concept",
+      "associatedDomains": [
+        "applinks:lesoftpost.com",
+        "applinks:www.lesoftpost.com"
+      ],
       "infoPlist": {
         "CFBundleDisplayName": "Le Soft",
         "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
+      "package": "com.lesoft.android.concept",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "lesoftpost.com",
+              "pathPrefix": "/"
+            },
+            {
+              "scheme": "https",
+              "host": "www.lesoftpost.com",
+              "pathPrefix": "/"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        }
+      ]
     },
-    "web": {
-      "favicon": "./assets/favicon.png",
-      "output": "single"
-    },
-    "experiments": {},
-    "plugins": [
-      "expo-router",
-      "expo-image",
-      "expo-font"
-    ],
-    "scheme": "lesoft",
-    "owner": "mams223",
-    "extra": {
-      "eas": {
-        "projectId": "e395f646-df28-4fde-a13a-ff9aef5fd2a2"
-      }
-    }
-  }
-}
