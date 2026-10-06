@@ -9,11 +9,28 @@ export function createSiteScript(request: WebRequest, theme: ReaderTheme, fontSc
   var options = ${options};
   if (!/^https:\/\/(www\.)?lesoftpost\.com(?:\/|$)/i.test(location.href)) return true;
   window.__leSoftOptions = options;
+  
   function send(payload) {
     payload.url = location.href;
     payload.requestId = window.__leSoftOptions.requestId;
     if (window.ReactNativeWebView) window.ReactNativeWebView.postMessage(JSON.stringify(payload));
   }
+
+  // FORCE READER APP COMPLIANCE (APPLE/GOOGLE)
+  function hideSubscriptions() {
+    if (document.body && !document.body.classList.contains('is-ios-app')) {
+      document.body.classList.add('is-ios-app');
+    }
+    var style = document.getElementById('le-soft-compliance-style');
+    if (!style) {
+      style = document.createElement('style');
+      style.id = 'le-soft-compliance-style';
+      // Masque globalement les liens d'abonnements, les grilles tarifaires et les boutons de commande
+      style.textContent = 'a[href*="abonnement"], a[href*="membership-join"], a[href*="swpm_payment"], .pricing-table, .subscription-plan, [class*="price"], button[name="commander"] { display: none !important; }';
+      if (document.head) document.head.appendChild(style);
+    }
+  }
+
   function readAccount() {
     var path = location.pathname;
     if (!/membership-login/i.test(path)) return;
@@ -34,6 +51,7 @@ export function createSiteScript(request: WebRequest, theme: ReaderTheme, fontSc
       if (window.__leSoftLastAccount !== key) { window.__leSoftLastAccount = key; send(payload); }
     }
   }
+
   function styleReader() {
     var opts = window.__leSoftOptions;
     if (!/^(article|journal)$/.test(opts.mode) || /membership-login/i.test(location.pathname)) return;
@@ -69,8 +87,7 @@ export function createSiteScript(request: WebRequest, theme: ReaderTheme, fontSc
       '[data-le-soft-article] a{color:'+c.red+'!important;overflow-wrap:anywhere!important}' +
       '[data-le-soft-article] .entry-meta{font-size:13px!important;color:'+c.muted+'!important;margin-bottom:18px!important}' +
       '[data-le-soft-article] .entry-footer,[data-le-soft-article] .author-bio,[data-le-soft-article] .post-author,[data-le-soft-article] #comments,[data-le-soft-article] .comments-area,[data-le-soft-article] .post-navigation,[data-le-soft-article] .related-posts,[data-le-soft-article] .sharedaddy{display:none!important}' +
-      '[data-le-soft-article] iframe,[data-le-soft-article] embed,[data-le-soft-article] object{max-width:100%!important}' +
-      'a[href*="membership-join"],a[href*="swpm_payment"]{display:none!important}';
+      '[data-le-soft-article] iframe,[data-le-soft-article] embed,[data-le-soft-article] object{max-width:100%!important}';
     var style = document.getElementById('le-soft-reader-style');
     if (!style) { style = document.createElement('style'); style.id = 'le-soft-reader-style'; document.head.appendChild(style); }
     if (style.textContent !== css) style.textContent = css;
@@ -83,7 +100,15 @@ export function createSiteScript(request: WebRequest, theme: ReaderTheme, fontSc
       }
     }
   }
-  function check() { try { readAccount(); styleReader(); } catch (_) {} }
+
+  function check() { 
+    try { 
+      hideSubscriptions();
+      readAccount(); 
+      styleReader(); 
+    } catch (_) {} 
+  }
+  
   window.__leSoftCheck = check;
   if (!window.__leSoftObserver && document.documentElement) {
     window.__leSoftObserver = new MutationObserver(function () {
@@ -92,6 +117,7 @@ export function createSiteScript(request: WebRequest, theme: ReaderTheme, fontSc
     });
     window.__leSoftObserver.observe(document.documentElement, { childList: true, subtree: true, characterData: true });
   }
+  
   check();
   setTimeout(check, 400);
   setTimeout(check, 1500);
