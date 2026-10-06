@@ -1,3 +1,11 @@
+{
+  "expo": {
+    "name": "Le Soft",
+    "slug": "le-soft-ios",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.lesoft.ios.concept",
@@ -42,3 +50,22 @@
         }
       ]
     },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "output": "single"
+    },
+    "experiments": {},
+    "plugins": [
+      "expo-router",
+      "expo-image",
+      "expo-font"
+    ],
+    "scheme": "lesoft",
+    "owner": "mams223",
+    "extra": {
+      "eas": {
+        "projectId": "e395f646-df28-4fde-a13a-ff9aef5fd2a2"
+      }
+    }
+  }
+}
