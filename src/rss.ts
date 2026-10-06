@@ -1,0 +1,63 @@
+import { BRAND, officialUrl } from './config';
+import { extractImages, imageUrl, parseFeed, parseKiosk } from './content';
+import { Article } from './types';
+
+export async function fetchText(url: string, timeout = 12000): Promise<string> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeout);
+  try {
+    const response = await fetch(url, { signal: controller.signal,
+      headers: { Accept: 'application/rss+xml, application/json, text/html, text/xml', 'Cache-Control': 'no-cache' } });
+    if (!response.ok) throw new Error(`Site indisponible (${response.status})`);
+    return await response.text();
+  } finally { clearTimeout(timer); }
+}
+
+export async function fetchArticles(): Promise<Article[]> {
+  const articles = parseFeed(await fetchText(BRAND.feedUrl));
+  if (!articles.length) throw new Error('Le site n’a pas renvoyé d’articles.');
+  return articles;
+}
+
+export async function fetchEditions(): Promise<Article[]> {
+  const editions = parseKiosk(await fetchText(BRAND.kioskUrl));
+  if (!editions.length) throw new Error('Le kiosque est temporairement indisponible.');
+  return editions;
+}
+
+export async function enrichArticleImages(articles: Article[], onImage: (article: Article) => void, signal?: AbortSignal): Promise<void> {
+  const pending = articles.filter((article) => !article.image);
+  if (!pending.length || signal?.aborted) return;
+  const resolved = new Set<string>();
+  // Optional REST images. The app still works when a membership plugin disables REST.
+  try {
+    const json = JSON.parse(await fetchText(`${BRAND.siteUrl}/wp-json/wp/v2/posts?per_page=40&_embed=wp:featuredmedia`, 6000));
+    if (Array.isArray(json) && !signal?.aborted) {
+      for (const post of json) {
+        const link = officialUrl(post.link || '');
+        const article = pending.find((item) => item.link === link);
+        const media = post._embedded?.['wp:featuredmedia']?.[0];
+        const candidates = [media?.media_details?.sizes?.large?.source_url, media?.source_url]
+          .map((url) => imageUrl(url)).filter((url): url is string => Boolean(url));
+        if (article && candidates.length) {
+          resolved.add(article.id);
+          onImage({ ...article, image: candidates[0], imageCandidates: [...new Set(candidates)] });
+        }
+      }
+    }
+  } catch { /* Page metadata is the fallback when REST is unavailable. */ }
+  const remaining = pending.filter((article) => !resolved.has(article.id));
+  let index = 0;
+  await Promise.all(Array.from({ length: Math.min(3, remaining.length) }, async () => {
+    while (index < remaining.length && !signal?.aborted) {
+      const article = remaining[index++];
+      try {
+        const html = await fetchText(article.link, 8000);
+        const imageCandidates = extractImages(html, article.link);
+        if (imageCandidates.length && !signal?.aborted) {
+          onImage({ ...article, image: imageCandidates[0], imageCandidates });
+        }
+      } catch { /* Keep a small placeholder if the publisher has no cover image. */ }
+    }
+  }));
+}

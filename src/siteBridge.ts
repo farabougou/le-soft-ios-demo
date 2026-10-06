@@ -1,0 +1,100 @@
+import { ReaderTheme, WebRequest } from './types';
+
+// This bridge reads visible account labels and styles the server's rendered page.
+// It never reads document.cookie, passwords, tokens, or protected API responses.
+export function createSiteScript(request: WebRequest, theme: ReaderTheme, fontScale = 1): string {
+  const options = JSON.stringify({ mode: request.mode, theme, fontScale, requestId: request.requestId });
+  return String.raw`
+(function () {
+  var options = ${options};
+  if (!/^https:\/\/(www\.)?lesoftpost\.com(?:\/|$)/i.test(location.href)) return true;
+  window.__leSoftOptions = options;
+  function send(payload) {
+    payload.url = location.href;
+    payload.requestId = window.__leSoftOptions.requestId;
+    if (window.ReactNativeWebView) window.ReactNativeWebView.postMessage(JSON.stringify(payload));
+  }
+  function readAccount() {
+    var path = location.pathname;
+    if (!/membership-login/i.test(path)) return;
+    var text = (document.body ? document.body.innerText : '').replace(/\u00a0/g, ' ');
+    var user = text.match(/Connect(?:é|e) en tant que[\s:]+([^\n]+)/i);
+    var payload;
+    function label(pattern) { var m = text.match(pattern); return m ? m[1].trim().slice(0, 180) : undefined; }
+    if (user) {
+      payload = {type: 'account-status', connected: true, username: user[1].trim().slice(0,180),
+        status: label(/Statut du Compte[\s:]+([^\n]+)/i),
+        membership: label(/Adhésion[\s:]+([^\n]+)/i),
+        expiration: label(/Expiration du compte[\s:]+([^\n]+)/i)};
+    } else if (document.querySelector('input[type="password"]')) {
+      payload = {type: 'account-status', connected: false};
+    }
+    if (payload) {
+      var key = JSON.stringify(payload);
+      if (window.__leSoftLastAccount !== key) { window.__leSoftLastAccount = key; send(payload); }
+    }
+  }
+  function styleReader() {
+    var opts = window.__leSoftOptions;
+    if (!/^(article|journal)$/.test(opts.mode) || /membership-login/i.test(location.pathname)) return;
+    var entry = document.querySelector('article.type-post, article.post, article.hentry');
+    if (!entry) {
+      var content = document.querySelector('.entry-content, .post-content');
+      if (content) entry = content.closest('article') || content.parentElement;
+    }
+    if (!entry || !entry.querySelector('.entry-content, .post-content, h1')) return;
+    entry.setAttribute('data-le-soft-article', '');
+    // Isolate the article without copying its content or changing entitlement checks.
+    var branch = entry;
+    while (branch && branch !== document.body) {
+      if (branch.parentElement) {
+        Array.prototype.forEach.call(branch.parentElement.children, function (sibling) {
+          if (sibling !== branch && !/^(SCRIPT|STYLE|LINK|META)$/.test(sibling.tagName)) sibling.setAttribute('data-le-soft-hidden', '');
+        });
+        branch.parentElement.setAttribute('data-le-soft-path', '');
+      }
+      branch = branch.parentElement;
+    }
+    var c = opts.theme;
+    var size = Math.round(18 * opts.fontScale);
+    var css = '[data-le-soft-hidden]{display:none!important}' +
+      'html,body{margin:0!important;padding:0!important;background:'+c.bg+'!important;color:'+c.text+'!important;overflow-x:hidden!important}' +
+      '[data-le-soft-path]{float:none!important;width:100%!important;max-width:100%!important;margin:0!important;padding:0!important;min-height:0!important;display:block!important;background:'+c.bg+'!important}' +
+      '[data-le-soft-article]{box-sizing:border-box!important;float:none!important;width:100%!important;max-width:760px!important;margin:0 auto!important;padding:20px 22px 60px!important;background:'+c.bg+'!important;color:'+c.text+'!important;border:0!important;box-shadow:none!important;font-family:-apple-system,BlinkMacSystemFont,Arial,sans-serif!important}' +
+      '[data-le-soft-article] .entry-content,[data-le-soft-article] .post-content{color:'+c.text+'!important;font-size:'+size+'px!important;line-height:1.75!important;overflow-wrap:anywhere!important}' +
+      '[data-le-soft-article] p,[data-le-soft-article] li{font-size:'+size+'px!important;line-height:1.75!important;color:'+c.text+'!important}' +
+      '[data-le-soft-article] h1{font-size:'+Math.round(29*opts.fontScale)+'px!important;line-height:1.22!important;letter-spacing:-.6px!important;color:'+c.text+'!important;margin:8px 0 20px!important}' +
+      '[data-le-soft-article] h2,[data-le-soft-article] h3{line-height:1.35!important;color:'+c.text+'!important}' +
+      '[data-le-soft-article] img{max-width:100%!important;height:auto!important;object-fit:contain!important;border-radius:12px}' +
+      '[data-le-soft-article] a{color:'+c.red+'!important;overflow-wrap:anywhere!important}' +
+      '[data-le-soft-article] .entry-meta{font-size:13px!important;color:'+c.muted+'!important;margin-bottom:18px!important}' +
+      '[data-le-soft-article] .entry-footer,[data-le-soft-article] .author-bio,[data-le-soft-article] .post-author,[data-le-soft-article] #comments,[data-le-soft-article] .comments-area,[data-le-soft-article] .post-navigation,[data-le-soft-article] .related-posts,[data-le-soft-article] .sharedaddy{display:none!important}' +
+      '[data-le-soft-article] iframe,[data-le-soft-article] embed,[data-le-soft-article] object{max-width:100%!important}' +
+      'a[href*="membership-join"],a[href*="swpm_payment"]{display:none!important}';
+    var style = document.getElementById('le-soft-reader-style');
+    if (!style) { style = document.createElement('style'); style.id = 'le-soft-reader-style'; document.head.appendChild(style); }
+    if (style.textContent !== css) style.textContent = css;
+    var image = entry.querySelector('img.wp-post-image, .post-thumbnail img, .entry-content img');
+    if (image) {
+      var imageUrl = image.getAttribute('data-lazy-src') || image.getAttribute('data-src') || image.currentSrc || image.src;
+      if (imageUrl && !/^(data:|blob:)/.test(imageUrl) && window.__leSoftLastImage !== imageUrl) {
+        window.__leSoftLastImage = imageUrl;
+        send({type: 'article-image', image: imageUrl});
+      }
+    }
+  }
+  function check() { try { readAccount(); styleReader(); } catch (_) {} }
+  window.__leSoftCheck = check;
+  if (!window.__leSoftObserver && document.documentElement) {
+    window.__leSoftObserver = new MutationObserver(function () {
+      clearTimeout(window.__leSoftTimer);
+      window.__leSoftTimer = setTimeout(function () { window.__leSoftCheck(); }, 150);
+    });
+    window.__leSoftObserver.observe(document.documentElement, { childList: true, subtree: true, characterData: true });
+  }
+  check();
+  setTimeout(check, 400);
+  setTimeout(check, 1500);
+})(); true;
+`;
+}
