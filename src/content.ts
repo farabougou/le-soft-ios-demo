@@ -26,7 +26,7 @@ export function stripHtml(value = ''): string {
 
 export function cleanExcerpt(value: string): string {
   return stripHtml(value)
-    .split(/La suite est disponible|Pour le lire,?\s*Connectez|This content is for members only|The post .+? first appeared on|\[\.\.\.\]/i)[0]
+    .split(/La suite est disponible|Pour le lire,?\s*Connectez|This content is for members only|Abonnez-vous|The post .+? first appeared on|\[\.\.\.\]/i)[0]
     .trim().slice(0, 230);
 }
 

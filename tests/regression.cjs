@@ -15,6 +15,14 @@ assert.equal(cleanExcerpt('Bonjour. This content is for members only. Footer'),'
 assert.equal(officialUrl('https://lesoftpost.com.evil.example/x'),undefined);
 assert.equal(navigationKind('javascript:alert(1)'),'blocked');
 assert.equal(navigationKind('https://lesoftpost.com/membership-join/'),'purchase');
+assert.equal(navigationKind('https://lesoftpost.com/abonnement/'),'purchase');
+assert.equal(navigationKind('https://lesoftpost.com/membership-login/?swpm_payment_button=1'),'purchase');
+assert.equal(navigationKind('https://checkout.stripe.com/c/pay/x'),'purchase');
+assert.equal(navigationKind('https://pay.wave.com/m/x'),'purchase');
+assert.equal(navigationKind('https://lesoftpost.com/membership-login/'),'official');
+assert.equal(navigationKind('https://lesoftpost.com/membership-login/password-reset/'),'official');
+assert.equal(navigationKind('https://lesoftpost.com/2026/10/05/hausse-des-abonnements-internet/'),'official');
+assert.equal(navigationKind('https://www.orange.ml/actualites'),'external');
 assert.equal(parseKiosk('<a href="/journal/">Journal du 6 octobre</a><a href="/journal/">Journal du 6 octobre</a>').length,1);
 async function browserTests(){
  const {JSDOM}=require('jsdom');

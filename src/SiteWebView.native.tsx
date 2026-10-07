@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, BackHandler, Linking, Pressable, Share, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, BackHandler, Linking, Platform, Pressable, Share, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
 import { officialUrl } from './config';
@@ -9,6 +9,10 @@ import { imageUrl } from './content';
 import { createSiteScript } from './siteBridge';
 import { AccountSession, ReaderTheme, WebRequest } from './types';
 import { freshPage, navigationKind, sameArticle } from './webNavigation';
+
+// Appended to the normal Safari user agent so WordPress still sees a mobile browser.
+// The server hides every subscription offer when it sees LeSoftApp-iOS.
+const APP_USER_AGENT = Platform.OS === 'ios' ? 'LeSoftApp-iOS/1.0' : 'LeSoftApp-Android/1.0';
 
 export type SiteProps = {
   visible: boolean; request: WebRequest; theme: ReaderTheme; fontScale: number;
@@ -44,28 +48,19 @@ export default function SiteWebView(props: SiteProps) {
   }, [visible, canGoBack, onClose]);
 
   function allow(url: string, isTopFrame?: boolean): boolean {
-    if (isTopFrame === false) return true;
-
-    // 1. FORCER LA NAVIGATION INTERNE POUR LE COMPTE
-    // Intercepte les URLs liées au compte et à l'authentification
-    if (/(compte|account|membership|login|auth|stripe)/i.test(url)) {
-      if (/membership-login/i.test(url) && request.article) {
-        pendingArticle.current = request.article.link;
-      }
-      return true;
-    }
-
     const kind = navigationKind(url);
+    // Purchase pages and payment providers are refused first, even inside an iframe.
     if (kind === 'purchase') {
-      Alert.alert('Espace abonné', 'Cette application permet de lire les contenus de votre abonnement existant. Pour une question sur votre compte, contactez Le Soft depuis l’onglet Mon compte.');
+      if (isTopFrame !== false) Alert.alert('Espace abonné', 'Cette application permet de lire les contenus de votre abonnement existant. Pour une question sur votre compte, contactez Le Soft depuis l’onglet Mon compte.');
       return false;
     }
+    if (isTopFrame === false) return true;
+    if (kind === 'blocked') return false;
     if (kind === 'external') {
       if (visible) Linking.openURL(url).catch(() => Alert.alert('Lien indisponible', 'Impossible d’ouvrir ce lien.'));
       return false;
     }
-    if (kind === 'blocked') return false;
-    
+    // Login, password reset and account pages are on lesoftpost.com and stay in the app.
     if (/membership-login/i.test(url) && request.article) pendingArticle.current = request.article.link;
     return true;
   }
@@ -86,7 +81,7 @@ export default function SiteWebView(props: SiteProps) {
     </View>
     <View style={st.body}>
       <WebView ref={web} source={source} style={{ flex: 1, backgroundColor: theme.bg }}
-        userAgent="LeSoftApp-iOS"
+        applicationNameForUserAgent={APP_USER_AGENT}
         originWhitelist={['https://*', 'mailto:*', 'tel:*', 'about:blank']}
         sharedCookiesEnabled thirdPartyCookiesEnabled domStorageEnabled javaScriptEnabled
         incognito={false} cacheEnabled={false} setSupportMultipleWindows={false}

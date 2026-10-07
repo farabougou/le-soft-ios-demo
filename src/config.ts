@@ -6,7 +6,6 @@ export const BRAND = {
   feedUrl: 'https://lesoftpost.com/feed/',
   loginUrl: 'https://lesoftpost.com/membership-login/',
   kioskUrl: 'https://lesoftpost.com/kiosque-du-soft/',
-  subscribeUrl: 'https://lesoftpost.com/membership-join/',
   supportEmail: 'support@lesoftpost.com',
   contactUrl: 'https://lesoftpost.com/contact/',
 };

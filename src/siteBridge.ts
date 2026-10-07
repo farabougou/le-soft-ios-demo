@@ -26,7 +26,10 @@ export function createSiteScript(request: WebRequest, theme: ReaderTheme, fontSc
       style = document.createElement('style');
       style.id = 'le-soft-compliance-style';
       // Masque globalement les liens d'abonnements, les grilles tarifaires et les boutons de commande
-      style.textContent = 'a[href*="abonnement"], a[href*="membership-join"], a[href*="swpm_payment"], .pricing-table, .subscription-plan, [class*="price"], button[name="commander"] { display: none !important; }';
+      // Second line of defence: the WordPress plugin (server/wordpress) already removes these server-side.
+      style.textContent = 'a[href*="/abonnement"], a[href*="membership-join"], a[href*="swpm_payment"], a[href*="checkout"],' +
+        ' form[action*="swpm_payment"], form[action*="membership-join"],' +
+        ' .pricing-table, .subscription-plan, .lesoft-pricing, .lesoft-no-app, button[name="commander"] { display: none !important; }';
       if (document.head) document.head.appendChild(style);
     }
   }

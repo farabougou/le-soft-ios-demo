@@ -1,3 +1,4 @@
+import { Platform } from 'react-native';
 import { BRAND, officialUrl } from './config';
 import { extractImages, imageUrl, parseFeed, parseKiosk } from './content';
 import { Article } from './types';
@@ -7,7 +8,9 @@ export async function fetchText(url: string, timeout = 12000): Promise<string> {
   const timer = setTimeout(() => controller.abort(), timeout);
   try {
     const response = await fetch(url, { signal: controller.signal,
-      headers: { Accept: 'application/rss+xml, application/json, text/html, text/xml', 'Cache-Control': 'no-cache' } });
+      headers: { Accept: 'application/rss+xml, application/json, text/html, text/xml', 'Cache-Control': 'no-cache',
+        // Lets the WordPress plugin remove subscription offers from feeds and pages read by the iOS app.
+        ...(Platform.OS === 'ios' ? { 'X-LeSoft-App': 'ios' } : {}) } });
     if (!response.ok) throw new Error(`Site indisponible (${response.status})`);
     return await response.text();
   } finally { clearTimeout(timer); }
