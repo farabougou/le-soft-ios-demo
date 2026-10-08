@@ -37,3 +37,12 @@ export function sameArticle(uri: string, articleUri: string): boolean {
   const right = officialUrl(articleUri);
   return Boolean(left && right && new URL(left).pathname === new URL(right).pathname);
 }
+
+// A lesoftpost.com link opened from WhatsApp, Mail… (universal link): the page to show in the reader.
+// The home page only opens the app; purchase pages are never opened.
+export function incomingPage(uri: string | null | undefined): string | undefined {
+  if (!uri) return;
+  const trusted = officialUrl(uri);
+  if (!trusted || navigationKind(trusted) !== 'official') return;
+  return new URL(trusted).pathname.replace(/\/+$/, '') ? trusted : undefined;
+}

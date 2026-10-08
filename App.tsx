@@ -10,6 +10,7 @@ import { extractImages, frenchDate, searchText } from './src/content';
 import { enrichArticleImages, fetchArticles, fetchEditions, fetchText } from './src/rss';
 import SiteWebView from './src/SiteWebView';
 import { AccountSession, Article, ReaderTheme, WebRequest } from './src/types';
+import { incomingPage } from './src/webNavigation';
 
 const light: ReaderTheme = {bg:'#F4F4F1',surface:'#FFFFFF',text:'#202224',muted:'#707477',line:'#E2E3DF',red:BRAND.red};
 const dark: ReaderTheme = {bg:'#111415',surface:'#1D2122',text:'#F7F7F4',muted:'#A8AEAE',line:'#343A3B',red:'#B63759'};
@@ -85,6 +86,19 @@ export default function AppShell({children}:{children:React.ReactNode}) {
   }
   // Simple Membership logs out on ?swpm-logout=true, then the login page confirms the logged-out state.
   function logout() { setSession({connected:false,checkedAt:Date.now()}); open(`${BRAND.loginUrl}?swpm-logout=true`,'account'); }
+  // Universal links: a shared lesoftpost.com article opens in the reader (needs apple-app-site-association on the site).
+  const latest = useRef({open,articles});
+  useEffect(() => { latest.current = {open,articles}; });
+  useEffect(() => {
+    function handle(url:string|null) {
+      const page = incomingPage(url); if (!page) return;
+      const article = latest.current.articles.find(a => officialUrl(a.link) === page);
+      latest.current.open(page,/kiosque|journal-du/i.test(page)?'journal':'article',article);
+    }
+    void Linking.getInitialURL().then(handle).catch(() => {});
+    const subscription = Linking.addEventListener('url', ({url}) => handle(url));
+    return () => subscription.remove();
+  }, []);
   function onImage(id:string,image:string) { setArticles(old=>old.map(a=>a.id===id ? {...a,image,imageCandidates:[image,...(a.imageCandidates||[])]} : a)); }
   const store:Store = {c,darkMode,changeDark,articles,loading,error,refresh,favorites,toggle,open,session,logout,fontScale,changeFont,query,setQuery,savedOnly,setSavedOnly};
   return <Context.Provider value={store}><View style={[s.root,{backgroundColor:c.bg}]}><StatusBar style={darkMode?'light':'dark'}/><SafeAreaView style={s.root}><View style={[s.header,{borderColor:c.line}]}><NativeImage source={require('./assets/le-soft-wordmark.png')} resizeMode="contain" style={s.logo}/><View style={s.headerActions}><Button label={savedOnly?'Tous':'Favoris'} action={()=>{setSavedOnly(!savedOnly);router.replace('/');}}/><Button label="Actualiser" action={()=>void refresh()}/></View></View><View style={s.root}>{children}</View><Navigation/></SafeAreaView><SiteWebView visible={visible} request={request} theme={c} fontScale={fontScale} onClose={()=>setVisible(false)} onAccountStatus={setSession} onImage={onImage} favorite={!!request.article && favorites.includes(request.article.id)} onFavorite={()=>request.article && toggle(request.article.id)} onFontScale={changeFont}/></View></Context.Provider>;

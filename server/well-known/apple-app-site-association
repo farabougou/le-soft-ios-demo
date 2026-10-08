@@ -1,0 +1,15 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": ["TEAMID.com.lesoft.ios.concept"],
+        "components": [
+          { "/": "/membership-*", "exclude": true },
+          { "/": "/wp-admin*", "exclude": true },
+          { "/": "/wp-login.php*", "exclude": true },
+          { "/": "/*" }
+        ]
+      }
+    ]
+  }
+}

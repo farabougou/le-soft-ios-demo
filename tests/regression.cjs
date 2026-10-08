@@ -7,7 +7,7 @@ const {parseFeed,extractImages,parseKiosk,cleanExcerpt,frenchDate}=require('../s
 const {redirectSystemPath}=require('../src/app/+native-intent.tsx');
 const {officialUrl}=require('../src/config.ts');
 const {createSiteScript}=require('../src/siteBridge.ts');
-const {navigationKind}=require('../src/webNavigation.ts');
+const {navigationKind,incomingPage}=require('../src/webNavigation.ts');
 const theme={bg:'#fff',surface:'#fff',text:'#111',muted:'#777',line:'#eee',red:'#9f2345'};
 const link='https://lesoftpost.com/2026/10/05/article/';
 const feed=`<rss><channel><item><title><![CDATA[À la une &amp; Mali]]></title><link>${link}</link><pubDate>Mon, 05 Oct 2026 23:00:00 +0000</pubDate><category>À la une</category><description><![CDATA[<p>Texte public. La suite est disponible uniquement pour les abonnés.</p>]]></description><media:content url="http://lesoftpost.com/wp-content/uploads/photo.jpeg"/></item><item><title>Untrusted</title><link>https://evil.example/article</link></item></channel></rss>`;
@@ -18,6 +18,8 @@ assert.equal(frenchDate('7 February 2027'),'7 février 2027');
 for (const [input,route] of [['https://lesoftpost.com/2026/10/05/article/','/'],['https://lesoftpost.com/kiosk','/kiosk'],['/account','/account'],['lesoft://categories','/'],['/categories?x=1','/categories']]) assert.equal(redirectSystemPath({path:input,initial:true}),route);
 assert.equal(officialUrl('https://lesoftpost.com.evil.example/x'),undefined);
 assert.equal(navigationKind('javascript:alert(1)'),'blocked');
+assert.equal(incomingPage('https://www.lesoftpost.com/2026/10/05/article/'),'https://lesoftpost.com/2026/10/05/article/');
+assert.equal(incomingPage('https://lesoftpost.com/'),undefined);assert.equal(incomingPage('https://lesoftpost.com/membership-join/'),undefined);assert.equal(incomingPage('lesoft://categories'),undefined);assert.equal(incomingPage('https://evil.example/x'),undefined);
 assert.equal(navigationKind('https://lesoftpost.com/membership-join/'),'purchase');
 assert.equal(navigationKind('https://lesoftpost.com/abonnement/'),'purchase');
 assert.equal(navigationKind('https://lesoftpost.com/s-abonner/'),'purchase');
