@@ -31,6 +31,17 @@ export function createSiteScript(request: WebRequest, theme: ReaderTheme, fontSc
     var target = element.closest('li, .menu-item, .wp-block-button') || element;
     if (target === document.body || target.contains(document.querySelector('[data-le-soft-article]'))) target = element;
     target.setAttribute('data-le-soft-offer', '');
+    // « Connectez-vous ou abonnez-vous. » becomes « Connectez-vous. » instead of « Connectez-vous ou . »
+    var before = target.previousSibling;
+    if (before && before.nodeType === 3) before.nodeValue = before.nodeValue.replace(/\s+(ou|or)\s*$/i, '');
+  }
+  // Printed front pages end with « En kiosque : 300 f · Pour s'abonner… » and QR codes: crop that footer band.
+  function cropCovers() {
+    if (window.__leSoftOptions.mode !== 'journal' && !/kiosque/i.test(location.pathname)) return;
+    Array.prototype.forEach.call(document.querySelectorAll('img'), function (img) {
+      if (img.hasAttribute('data-le-soft-cover') || !img.naturalWidth) return;
+      if (img.naturalWidth >= 300 && img.naturalHeight > img.naturalWidth * 1.25) img.setAttribute('data-le-soft-cover', '');
+    });
   }
   function hideSubscriptions() {
     var root = document.head || document.documentElement;
@@ -40,11 +51,13 @@ export function createSiteScript(request: WebRequest, theme: ReaderTheme, fontSc
       style.id = 'le-soft-compliance-style';
       style.textContent = '[data-le-soft-offer], a[href*="membership-join"], a[href*="swpm_payment"], a[href*="checkout"],' +
         ' a[href*="/s-abonner"], form[action*="swpm_payment"], form[action*="membership-join"],' +
-        ' .pricing-table, .subscription-plan, .lesoft-pricing, .lesoft-no-app, button[name="commander"] { display: none !important; }';
+        ' .pricing-table, .subscription-plan, .lesoft-pricing, .lesoft-no-app, button[name="commander"] { display: none !important; }' +
+        ' img[data-le-soft-cover] { clip-path: inset(0 0 7.5% 0) !important; }';
       root.appendChild(style);
     }
     if (!document.body) return;
     if (!document.body.classList.contains('is-ios-app')) document.body.classList.add('is-ios-app');
+    cropCovers();
     // Links and buttons that lead to a purchase, wherever they are (menu, footer, paywall message).
     Array.prototype.forEach.call(document.querySelectorAll('a, button, [role="button"], input[type="submit"]'), function (el) {
       if (el.hasAttribute('data-le-soft-offer')) return;
@@ -150,6 +163,10 @@ export function createSiteScript(request: WebRequest, theme: ReaderTheme, fontSc
       window.__leSoftTimer = setTimeout(function () { window.__leSoftCheck(); }, 150);
     });
     window.__leSoftObserver.observe(document.documentElement, { childList: true, subtree: true, characterData: true });
+    // Image sizes are only known once loaded (covers are cropped from their proportions).
+    document.addEventListener('load', function (event) {
+      if (event.target && event.target.tagName === 'IMG') window.__leSoftCheck();
+    }, true);
   }
   
   check();
