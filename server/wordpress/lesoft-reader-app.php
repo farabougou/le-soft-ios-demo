@@ -30,7 +30,7 @@ function lesoft_is_ios_app() {
 function lesoft_is_purchase_url($url) {
 	$path  = (string) wp_parse_url($url, PHP_URL_PATH);
 	$query = (string) wp_parse_url($url, PHP_URL_QUERY);
-	return (bool) preg_match('#^/(membership-join|abonnements?|tarifs?|offres?|pricing|checkout|cart|panier)(/|$)#i', $path)
+	return (bool) preg_match('#^/(membership-join|s-abonner|abonnements?|tarifs?|offres?|pricing|checkout|cart|panier)(/|$)#i', $path)
 		|| (bool) preg_match('/swpm_payment|swpm_paypal|add-to-cart/i', $query);
 }
 
@@ -155,7 +155,7 @@ add_action('wp_head', function () {
 	}
 	echo '<style id="lesoft-ios-app">'
 		. '.lesoft-no-app,.lesoft-pricing,.pricing-table,.subscription-plan,'
-		. 'a[href*="/abonnement"],a[href*="membership-join"],a[href*="swpm_payment"],a[href*="checkout"],'
+		. 'a[href*="membership-join"],a[href*="swpm_payment"],a[href*="checkout"],'
 		. 'form[action*="swpm_payment"],form[action*="membership-join"]'
 		. '{display:none!important}'
 		. '</style>';

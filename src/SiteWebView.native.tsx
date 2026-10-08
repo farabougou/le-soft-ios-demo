@@ -35,8 +35,9 @@ export default function SiteWebView(props: SiteProps) {
   const script = useMemo(() => createSiteScript(request, theme, fontScale), [request, theme, fontScale]);
 
   useEffect(() => {
-    pendingArticle.current = null;
-  }, [request.requestId, request.uri]);
+    // A premium article opened while logged out starts on the login page and comes back after login.
+    pendingArticle.current = request.article && /membership-login/i.test(request.uri) ? request.article.link : null;
+  }, [request.requestId, request.uri, request.article]);
   useEffect(() => { web.current?.injectJavaScript(script); }, [script]);
   useEffect(() => {
     if (!visible) return;
@@ -86,6 +87,7 @@ export default function SiteWebView(props: SiteProps) {
         sharedCookiesEnabled thirdPartyCookiesEnabled domStorageEnabled javaScriptEnabled
         incognito={false} cacheEnabled={false} setSupportMultipleWindows={false}
         allowsBackForwardNavigationGestures allowsLinkPreview={false}
+        injectedJavaScriptBeforeContentLoaded={script}
         injectedJavaScript={script}
         onShouldStartLoadWithRequest={({ url, isTopFrame }) => allow(url, isTopFrame)}
         onLoadStart={() => { setLoading(true); setError(false); }}

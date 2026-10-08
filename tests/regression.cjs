@@ -16,6 +16,7 @@ assert.equal(officialUrl('https://lesoftpost.com.evil.example/x'),undefined);
 assert.equal(navigationKind('javascript:alert(1)'),'blocked');
 assert.equal(navigationKind('https://lesoftpost.com/membership-join/'),'purchase');
 assert.equal(navigationKind('https://lesoftpost.com/abonnement/'),'purchase');
+assert.equal(navigationKind('https://lesoftpost.com/s-abonner/'),'purchase');
 assert.equal(navigationKind('https://lesoftpost.com/membership-login/?swpm_payment_button=1'),'purchase');
 assert.equal(navigationKind('https://checkout.stripe.com/c/pay/x'),'purchase');
 assert.equal(navigationKind('https://pay.wave.com/m/x'),'purchase');
@@ -38,8 +39,17 @@ async function browserTests(){
  const reader=fixture('<html><head></head><body><header>Website nav</header><main><article class="type-post"><h1>Article</h1><div class="entry-content"><img class="wp-post-image" src="https://lesoftpost.com/cover.jpg"><p>Protected server content</p><p>This content is for members only</p></div></article><aside>sidebar</aside></main></body></html>','article',2,link);
  const doc=reader.dom.window.document;
  assert.equal(doc.querySelector('article').getAttribute('data-le-soft-article'),'');assert.equal(reader.dom.window.getComputedStyle(doc.querySelector('header')).display,'none');assert.match(doc.querySelector('article').textContent,/This content is for members only/);assert.ok(doc.querySelector('article img'));assert.equal(reader.messages.at(-1).type,'article-image');reader.dom.window.close();
+ const home=fixture(`<html><head></head><body><nav><ul><li class="menu-item"><a href="/">Accueil</a></li><li class="menu-item"><a href="https://lesoftpost.com/s-abonner/">S’abonner</a></li><li class="menu-item"><a href="/membership-login/">Mon Compte</a></li><li class="menu-item"><a href="/mon-abonnement/">Mon abonnement</a></li></ul></nav>
+  <div class="offre"><h3>Formule mensuelle : 2 000 FCFA / mois</h3><p>Payez par Orange Money ou Wave</p><img alt="Orange Money" src="/wp-content/orange-money.png"><a class="btn" href="/membership-join/?level=2">Choisir</a></div>
+  <h2 class="headline">Budget 2027 : 3 000 milliards FCFA votés</h2><a href="https://lesoftpost.com/2026/10/05/abonnements-internet-en-hausse/">Les abonnements internet en hausse</a></body></html>`,'site',5,'https://lesoftpost.com/');
+ const hd=home.dom.window.document;const shown=sel=>home.dom.window.getComputedStyle(hd.querySelector(sel)).display!=='none';
+ assert.ok(!shown('a[href*="s-abonner"]'),'menu S’abonner hidden');assert.ok(!shown('.offre h3'),'price hidden');assert.ok(!shown('.offre p'),'payment methods hidden');assert.ok(!shown('.offre img'),'payment logo hidden');assert.ok(!shown('.offre a'),'join button hidden');
+ assert.ok(shown('a[href="/"]'));assert.ok(shown('a[href="/membership-login/"]'));assert.ok(shown('a[href="/mon-abonnement/"]'),'account management kept');assert.ok(shown('.headline'),'news FCFA kept');assert.ok(shown('a[href*="abonnements-internet"]'),'article about subscriptions kept');home.dom.window.close();
+ const paywall=fixture('<html><head></head><body><article class="type-post"><h1>Article</h1><div class="entry-content"><p>Le Mali paie 50 milliards FCFA.</p><p>La suite est réservée aux abonnés. <a href="/membership-login/">Connectez-vous</a> ou <a href="/membership-join/">abonnez-vous pour 2 000 FCFA par mois</a>.</p></div></article></body></html>','article',6,link);
+ const pd=paywall.dom.window.document;const pshown=el=>paywall.dom.window.getComputedStyle(el).display!=='none';const ps=pd.querySelectorAll('.entry-content p');
+ assert.ok(pshown(ps[0]),'article FCFA kept');assert.ok(pshown(pd.querySelector('a[href="/membership-login/"]'))||!pshown(ps[1]));assert.ok(!pshown(pd.querySelector('a[href="/membership-join/"]')),'paywall join link hidden');paywall.dom.window.close();
  const guest=fixture('<input type="password">','account',3);assert.equal(guest.messages.at(-1).connected,false);guest.dom.window.close();
  const hostile=fixture('<input type="password">','account',4,'https://evil.example/');assert.equal(hostile.messages.length,0);hostile.dom.window.close();
- console.log('PASS: feed, images, source trust, kiosk, authenticated labels, reader isolation and preserved paywall');
+ console.log('PASS: feed, images, source trust, kiosk, authenticated labels, reader isolation, preserved paywall and hidden offers');
 }
 browserTests().catch(e=>{console.error(e);process.exit(1);});

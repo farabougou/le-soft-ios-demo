@@ -77,7 +77,12 @@ export default function AppShell({children}:{children:React.ReactNode}) {
   function changeDark(v:boolean) { setDark(v); preferences(v,fontScale); }
   function changeFont() { const next = fontScale === 1 ? 1.15 : fontScale === 1.15 ? 1.3 : 1; setFont(next); preferences(darkMode,next); }
   function toggle(id:string) { setFavorites(old => { const next = old.includes(id) ? old.filter(v=>v!==id) : [...old,id]; void AsyncStorage.setItem('le-soft-favorites-v1',JSON.stringify(next)).catch(()=>{}); return next; }); }
-  function open(uri:string,mode:WebRequest['mode'],article?:Article) { const safe = officialUrl(uri); if (!safe) return; setRequest({uri:safe,mode,article,requestId:Date.now()}); setVisible(true); }
+  function open(uri:string,mode:WebRequest['mode'],article?:Article) {
+    const safe = officialUrl(uri); if (!safe) return;
+    // Reader app: a premium article opens the login page (no subscription offer), then the article once logged in.
+    const locked = article?.premium && !session?.connected;
+    setRequest({uri:locked?BRAND.loginUrl:safe,mode,article,requestId:Date.now()}); setVisible(true);
+  }
   function onImage(id:string,image:string) { setArticles(old=>old.map(a=>a.id===id ? {...a,image,imageCandidates:[image,...(a.imageCandidates||[])]} : a)); }
   const store:Store = {c,darkMode,changeDark,articles,loading,error,refresh,favorites,toggle,open,session,fontScale,changeFont,query,setQuery,savedOnly,setSavedOnly};
   return <Context.Provider value={store}><View style={[s.root,{backgroundColor:c.bg}]}><StatusBar style={darkMode?'light':'dark'}/><SafeAreaView style={s.root}><View style={[s.header,{borderColor:c.line}]}><NativeImage source={require('./assets/le-soft-wordmark.png')} resizeMode="contain" style={s.logo}/><View style={s.headerActions}><Button label={savedOnly?'Tous':'Favoris'} action={()=>{setSavedOnly(!savedOnly);router.replace('/');}}/><Button label="Actualiser" action={()=>void refresh()}/></View></View><View style={s.root}>{children}</View><Navigation/></SafeAreaView><SiteWebView visible={visible} request={request} theme={c} fontScale={fontScale} onClose={()=>setVisible(false)} onAccountStatus={setSession} onImage={onImage} favorite={!!request.article && favorites.includes(request.article.id)} onFavorite={()=>request.article && toggle(request.article.id)} onFontScale={changeFont}/></View></Context.Provider>;

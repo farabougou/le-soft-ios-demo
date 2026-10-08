@@ -16,22 +16,53 @@ export function createSiteScript(request: WebRequest, theme: ReaderTheme, fontSc
     if (window.ReactNativeWebView) window.ReactNativeWebView.postMessage(JSON.stringify(payload));
   }
 
-  // FORCE READER APP COMPLIANCE (APPLE/GOOGLE)
+  // Reader app (App Store 3.1.3(a)): no price, offer or payment method is shown in the app.
+  // Works without any server change; the optional WordPress plugin in server/wordpress does the same server-side.
+  var OFFER_LINK = /s['’]\s?abonner|abonnez|nos offres|tarif|rejoindre|join us|souscri|payer|paiement|acheter|orange money|moov money/i;
+  // Same rule as webNavigation.ts: only the first path segment, so article slugs about « abonnements » stay.
+  var OFFER_PATH = /^\/(membership-join|s-abonner|abonnements?|tarifs?|offres?|pricing|checkout|cart|panier)(\/|$)/i;
+  function offerHref(href) {
+    if (!href || /^(#|mailto:|tel:|javascript:)/i.test(href)) return false;
+    try { var u = new URL(href, location.href); return /swpm_payment|swpm_paypal|add-to-cart/i.test(u.search) || (/(^|\.)lesoftpost\.com$/i.test(u.hostname) && OFFER_PATH.test(u.pathname)); }
+    catch (_) { return false; }
+  }
+  var PRICE = /(F\s?CFA|XOF).{0,40}(mois|\ban\b|année|semaine|jour|abonn)|(abonn|offre|formule|tarif|forfait|accès illimité).{0,80}(\d\s?F\s?CFA|\d\s?XOF)|orange money|moov money|\bwave\b.{0,20}(paiement|payer)/i;
+  function markOffer(element) {
+    var target = element.closest('li, .menu-item, .wp-block-button') || element;
+    if (target === document.body || target.contains(document.querySelector('[data-le-soft-article]'))) target = element;
+    target.setAttribute('data-le-soft-offer', '');
+  }
   function hideSubscriptions() {
-    if (document.body && !document.body.classList.contains('is-ios-app')) {
-      document.body.classList.add('is-ios-app');
-    }
-    var style = document.getElementById('le-soft-compliance-style');
-    if (!style) {
-      style = document.createElement('style');
+    var root = document.head || document.documentElement;
+    if (!root) return;
+    if (!document.getElementById('le-soft-compliance-style')) {
+      var style = document.createElement('style');
       style.id = 'le-soft-compliance-style';
-      // Masque globalement les liens d'abonnements, les grilles tarifaires et les boutons de commande
-      // Second line of defence: the WordPress plugin (server/wordpress) already removes these server-side.
-      style.textContent = 'a[href*="/abonnement"], a[href*="membership-join"], a[href*="swpm_payment"], a[href*="checkout"],' +
-        ' form[action*="swpm_payment"], form[action*="membership-join"],' +
+      style.textContent = '[data-le-soft-offer], a[href*="membership-join"], a[href*="swpm_payment"], a[href*="checkout"],' +
+        ' a[href*="/s-abonner"], form[action*="swpm_payment"], form[action*="membership-join"],' +
         ' .pricing-table, .subscription-plan, .lesoft-pricing, .lesoft-no-app, button[name="commander"] { display: none !important; }';
-      if (document.head) document.head.appendChild(style);
+      root.appendChild(style);
     }
+    if (!document.body) return;
+    if (!document.body.classList.contains('is-ios-app')) document.body.classList.add('is-ios-app');
+    // Links and buttons that lead to a purchase, wherever they are (menu, footer, paywall message).
+    Array.prototype.forEach.call(document.querySelectorAll('a, button, [role="button"], input[type="submit"]'), function (el) {
+      if (el.hasAttribute('data-le-soft-offer')) return;
+      var label = (el.textContent || el.value || el.getAttribute('aria-label') || '').trim();
+      var href = el.getAttribute('href') || '';
+      if (/membership-login|logout|password/i.test(href)) return;
+      // Inside an article only the destination counts, so a link titled « payer la dette » stays.
+      var inArticle = el.closest('[data-le-soft-article] .entry-content, [data-le-soft-article] .post-content');
+      if ((!inArticle && label && label.length < 80 && OFFER_LINK.test(label)) || offerHref(href)) markOffer(el);
+    });
+    // Short blocks that show a price or a payment method. News text such as « 500 milliards FCFA » is kept.
+    Array.prototype.forEach.call(document.querySelectorAll('p, li, td, th, span, small, strong, b, h2, h3, h4, h5, h6, label, figcaption, img'), function (el) {
+      if (el.hasAttribute('data-le-soft-offer')) return;
+      var text = el.tagName === 'IMG' ? (el.getAttribute('alt') || '') + ' ' + (el.getAttribute('src') || '') : (el.textContent || '');
+      if (text.length > 240) return;
+      if (el.closest('[data-le-soft-article] .entry-content, [data-le-soft-article] .post-content') && !/abonn|offre|formule|tarif/i.test(text)) return;
+      if (PRICE.test(text) || (el.tagName === 'IMG' && /orange-?money|wave|moov/i.test(text))) markOffer(el);
+    });
   }
 
   function readAccount() {
@@ -92,7 +123,7 @@ export function createSiteScript(request: WebRequest, theme: ReaderTheme, fontSc
       '[data-le-soft-article] .entry-footer,[data-le-soft-article] .author-bio,[data-le-soft-article] .post-author,[data-le-soft-article] #comments,[data-le-soft-article] .comments-area,[data-le-soft-article] .post-navigation,[data-le-soft-article] .related-posts,[data-le-soft-article] .sharedaddy{display:none!important}' +
       '[data-le-soft-article] iframe,[data-le-soft-article] embed,[data-le-soft-article] object{max-width:100%!important}';
     var style = document.getElementById('le-soft-reader-style');
-    if (!style) { style = document.createElement('style'); style.id = 'le-soft-reader-style'; document.head.appendChild(style); }
+    if (!style) { style = document.createElement('style'); style.id = 'le-soft-reader-style'; (document.head || document.documentElement).appendChild(style); }
     if (style.textContent !== css) style.textContent = css;
     var image = entry.querySelector('img.wp-post-image, .post-thumbnail img, .entry-content img');
     if (image) {
@@ -106,9 +137,9 @@ export function createSiteScript(request: WebRequest, theme: ReaderTheme, fontSc
 
   function check() { 
     try { 
+      readAccount();
+      styleReader();
       hideSubscriptions();
-      readAccount(); 
-      styleReader(); 
     } catch (_) {} 
   }
   
