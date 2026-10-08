@@ -8,9 +8,10 @@ export const BRAND = {
   kioskUrl: 'https://lesoftpost.com/kiosque-du-soft/',
   supportEmail: 'support@lesoftpost.com',
   contactUrl: 'https://lesoftpost.com/contact/',
+  privacyUrl: 'https://docs.google.com/document/d/1-Fb4z1K4HlRgBkLUmRemcQ600Y9Kdjsz7RmYx2CN3t0/preview',
 };
 
-export const RELEASE = '5';
+export const RELEASE = '6';
 
 export function officialUrl(value: string): string | undefined {
   try {
