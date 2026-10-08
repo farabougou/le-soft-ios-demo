@@ -82,6 +82,8 @@ add_action('send_headers', function () {
 			define('DONOTCACHEPAGE', true);
 		}
 		nocache_headers();
+		// Le CDN de l'hébergeur lit cet en-tête (il envoie « CDN-Cache-Control: maxage=31104000 » par défaut).
+		header('CDN-Cache-Control: no-store');
 	}
 });
 
