@@ -48,6 +48,10 @@ async function browserTests(){
  const paywall=fixture('<html><head></head><body><article class="type-post"><h1>Article</h1><div class="entry-content"><p>Le Mali paie 50 milliards FCFA.</p><p>La suite est réservée aux abonnés. <a href="/membership-login/">Connectez-vous</a> ou <a href="/membership-join/">abonnez-vous pour 2 000 FCFA par mois</a>.</p></div></article></body></html>','article',6,link);
  const pd=paywall.dom.window.document;const pshown=el=>paywall.dom.window.getComputedStyle(el).display!=='none';const ps=pd.querySelectorAll('.entry-content p');
  assert.ok(pshown(ps[0]),'article FCFA kept');assert.ok(pshown(pd.querySelector('a[href="/membership-login/"]'))||!pshown(ps[1]));assert.ok(!pshown(pd.querySelector('a[href="/membership-join/"]')),'paywall join link hidden');assert.doesNotMatch(ps[1].textContent.replace(/abonnez-vous.*?mois/,''),/ ou\s*\.$/,'no dangling « ou »');paywall.dom.window.close();
+ const cover=fixture('<html><head><title>Journal du 02 octobre 2026 – Numéro 407 | Le soft</title></head><body><img id="une" src="https://lesoftpost.com/une.jpg"><img id="photo" src="https://lesoftpost.com/photo.jpg"></body></html>','site',7,'https://lesoftpost.com/2026/10/01/journal-du-02-octobre-2026/');
+ const cd=cover.dom.window.document;const size=(el,w,h)=>{Object.defineProperty(el,'naturalWidth',{value:w});Object.defineProperty(el,'naturalHeight',{value:h});};
+ size(cd.getElementById('une'),800,1130);size(cd.getElementById('photo'),1200,800);cover.dom.window.__leSoftCheck();
+ assert.ok(cd.getElementById('une').hasAttribute('data-le-soft-cover'),'front page footer cropped');assert.ok(!cd.getElementById('photo').hasAttribute('data-le-soft-cover'),'landscape photo untouched');cover.dom.window.close();
  const guest=fixture('<input type="password">','account',3);assert.equal(guest.messages.at(-1).connected,false);guest.dom.window.close();
  const hostile=fixture('<input type="password">','account',4,'https://evil.example/');assert.equal(hostile.messages.length,0);hostile.dom.window.close();
  console.log('PASS: feed, images, source trust, kiosk, authenticated labels, reader isolation, preserved paywall and hidden offers');

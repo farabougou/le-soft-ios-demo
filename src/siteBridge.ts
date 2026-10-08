@@ -37,7 +37,9 @@ export function createSiteScript(request: WebRequest, theme: ReaderTheme, fontSc
   }
   // Printed front pages end with « En kiosque : 300 f · Pour s'abonner… » and QR codes: crop that footer band.
   function cropCovers() {
-    if (window.__leSoftOptions.mode !== 'journal' && !/kiosque/i.test(location.pathname)) return;
+    // Kiosk list, or an edition page such as « Journal du 02 octobre 2026 – Numéro 407 ».
+    var edition = /kiosque|journal|num[eé]ro|[eé]dition/i;
+    if (window.__leSoftOptions.mode !== 'journal' && !edition.test(decodeURIComponent(location.pathname)) && !edition.test(document.title)) return;
     Array.prototype.forEach.call(document.querySelectorAll('img'), function (img) {
       if (img.hasAttribute('data-le-soft-cover') || !img.naturalWidth) return;
       if (img.naturalWidth >= 300 && img.naturalHeight > img.naturalWidth * 1.25) img.setAttribute('data-le-soft-cover', '');
@@ -52,7 +54,7 @@ export function createSiteScript(request: WebRequest, theme: ReaderTheme, fontSc
       style.textContent = '[data-le-soft-offer], a[href*="membership-join"], a[href*="swpm_payment"], a[href*="checkout"],' +
         ' a[href*="/s-abonner"], form[action*="swpm_payment"], form[action*="membership-join"],' +
         ' .pricing-table, .subscription-plan, .lesoft-pricing, .lesoft-no-app, button[name="commander"] { display: none !important; }' +
-        ' img[data-le-soft-cover] { clip-path: inset(0 0 7.5% 0) !important; }';
+        ' img[data-le-soft-cover] { clip-path: inset(0 0 8.5% 0) !important; }';
       root.appendChild(style);
     }
     if (!document.body) return;
