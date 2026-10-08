@@ -27,12 +27,35 @@ export default function SiteWebView(props: SiteProps) {
   const web = useRef<WebView>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [errorDetail, setErrorDetail] = useState('');
   const [canGoBack, setCanGoBack] = useState(false);
   const [currentUri, setCurrentUri] = useState(request.uri);
   const pendingArticle = useRef<string | null>(null);
   const source = useMemo(() => ({ uri: freshPage(request.uri, request.requestId),
     headers: { 'Cache-Control': 'no-cache' } }), [request.uri, request.requestId]);
   const script = useMemo(() => createSiteScript(request, theme, fontScale), [request, theme, fontScale]);
+  // The host's firewall answers 503/429 to bursts of requests: retry quietly before showing an error.
+  const target = useRef(source.uri);
+  const retries = useRef(0);
+  const failed = useRef(false);
+  const retryTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  useEffect(() => { target.current = source.uri; retries.current = 0; }, [source.uri]);
+  useEffect(() => () => clearTimeout(retryTimer.current), []);
+
+  function retry() {
+    web.current?.injectJavaScript(`window.location.replace(${JSON.stringify(target.current)}); true;`);
+  }
+  function fail(detail: string, transient: boolean) {
+    failed.current = true;
+    clearTimeout(retryTimer.current);
+    if (transient && retries.current < 2) {
+      retries.current += 1;
+      setLoading(true);
+      retryTimer.current = setTimeout(retry, retries.current * 2500);
+      return;
+    }
+    setErrorDetail(detail); setError(true); setLoading(false);
+  }
 
   useEffect(() => {
     // A premium article opened while logged out starts on the login page and comes back after login.
@@ -63,6 +86,7 @@ export default function SiteWebView(props: SiteProps) {
     }
     // Login, password reset and account pages are on lesoftpost.com and stay in the app.
     if (/membership-login/i.test(url) && request.article) pendingArticle.current = request.article.link;
+    target.current = url;
     return true;
   }
 
@@ -85,16 +109,22 @@ export default function SiteWebView(props: SiteProps) {
         applicationNameForUserAgent={APP_USER_AGENT}
         originWhitelist={['https://*', 'mailto:*', 'tel:*', 'about:blank']}
         sharedCookiesEnabled thirdPartyCookiesEnabled domStorageEnabled javaScriptEnabled
-        incognito={false} cacheEnabled={false} setSupportMultipleWindows={false}
+        incognito={false} setSupportMultipleWindows={false}
         allowsBackForwardNavigationGestures allowsLinkPreview={false}
         injectedJavaScriptBeforeContentLoaded={script}
         injectedJavaScript={script}
         onShouldStartLoadWithRequest={({ url, isTopFrame }) => allow(url, isTopFrame)}
-        onLoadStart={() => { setLoading(true); setError(false); }}
-        onLoadEnd={() => { setLoading(false); web.current?.injectJavaScript(script); }}
-        onError={() => { setError(true); setLoading(false); }}
+        onLoadStart={() => { failed.current = false; setLoading(true); setError(false); }}
+        onLoadEnd={() => {
+          if (failed.current) return; // A retry is pending or the error screen is shown.
+          retries.current = 0; setLoading(false); web.current?.injectJavaScript(script);
+        }}
+        onError={({ nativeEvent }) => fail(`${nativeEvent.domain} ${nativeEvent.code}`, true)}
         onHttpError={({ nativeEvent }) => {
-          if (nativeEvent.statusCode >= 400 && sameArticle(nativeEvent.url, currentUri)) { setError(true); setLoading(false); }
+          const status = nativeEvent.statusCode;
+          // 4xx pages (404, firewall challenge…) are rendered by the site itself; only server failures block reading.
+          if ([408, 425, 429, 500, 502, 503, 504].includes(status)) fail(`HTTP ${status}`, true);
+          else if (status >= 500) fail(`HTTP ${status}`, false);
         }}
         onContentProcessDidTerminate={() => web.current?.reload()}
         onNavigationStateChange={(state) => { setCanGoBack(state.canGoBack); setCurrentUri(state.url); }}
@@ -123,7 +153,8 @@ export default function SiteWebView(props: SiteProps) {
         <Ionicons name="cloud-offline-outline" size={36} color={theme.muted} />
         <Text style={[st.errorTitle, { color: theme.text }]}>La page n’a pas pu être chargée</Text>
         <Text style={[st.errorText, { color: theme.muted }]}>Vérifiez votre connexion puis réessayez.</Text>
-        <Pressable onPress={() => { setError(false); setLoading(true); web.current?.reload(); }} style={[st.retry, { backgroundColor: theme.red }]} accessibilityRole="button"><Text style={st.retryText}>Réessayer</Text></Pressable>
+        {!!errorDetail && <Text style={[st.errorText, { color: theme.muted, fontSize: 12 }]}>Code : {errorDetail}</Text>}
+        <Pressable onPress={() => { setError(false); setLoading(true); retries.current = 0; retry(); }} style={[st.retry, { backgroundColor: theme.red }]} accessibilityRole="button"><Text style={st.retryText}>Réessayer</Text></Pressable>
       </View>}
     </View>
     <View style={[st.toolbar, { backgroundColor: theme.surface, borderColor: theme.line }]}>

@@ -10,7 +10,7 @@ export const BRAND = {
   contactUrl: 'https://lesoftpost.com/contact/',
 };
 
-export const RELEASE = '4';
+export const RELEASE = '5';
 
 export function officialUrl(value: string): string | undefined {
   try {

@@ -11,7 +11,7 @@ export async function fetchText(url: string, timeout = 12000): Promise<string> {
       headers: { Accept: 'application/rss+xml, application/json, text/html, text/xml', 'Cache-Control': 'no-cache',
         // Lets the WordPress plugin remove subscription offers from feeds and pages read by the iOS app.
         ...(Platform.OS === 'ios' ? { 'X-LeSoft-App': 'ios' } : {}) } });
-    if (!response.ok) throw new Error(`Site indisponible (${response.status})`);
+    if (!response.ok) throw Object.assign(new Error(`Site indisponible (${response.status})`), { status: response.status });
     return await response.text();
   } finally { clearTimeout(timer); }
 }
@@ -49,10 +49,12 @@ export async function enrichArticleImages(articles: Article[], onImage: (article
       }
     }
   } catch { /* Page metadata is the fallback when REST is unavailable. */ }
-  const remaining = pending.filter((article) => !resolved.has(article.id));
+  // The host's firewall blocks bursts (HTTP 503/429), which also breaks the reader: stay small and stop when told to.
+  const remaining = pending.filter((article) => !resolved.has(article.id)).slice(0, 10);
   let index = 0;
-  await Promise.all(Array.from({ length: Math.min(3, remaining.length) }, async () => {
-    while (index < remaining.length && !signal?.aborted) {
+  let throttled = false;
+  await Promise.all(Array.from({ length: Math.min(2, remaining.length) }, async () => {
+    while (index < remaining.length && !signal?.aborted && !throttled) {
       const article = remaining[index++];
       try {
         const html = await fetchText(article.link, 8000);
@@ -60,7 +62,10 @@ export async function enrichArticleImages(articles: Article[], onImage: (article
         if (imageCandidates.length && !signal?.aborted) {
           onImage({ ...article, image: imageCandidates[0], imageCandidates });
         }
-      } catch { /* Keep a small placeholder if the publisher has no cover image. */ }
+      } catch (error) {
+        // Otherwise keep a small placeholder if the publisher has no cover image.
+        if ([429, 503].includes((error as { status?: number }).status ?? 0)) throttled = true;
+      }
     }
   }));
 }

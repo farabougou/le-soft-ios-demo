@@ -126,3 +126,11 @@ export function parseKiosk(html: string): Article[] {
 export function searchText(text: string): string {
   return text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 }
+
+const MONTHS: Record<string, string> = { january: 'janvier', february: 'février', march: 'mars', april: 'avril', may: 'mai', june: 'juin',
+  july: 'juillet', august: 'août', september: 'septembre', october: 'octobre', november: 'novembre', december: 'décembre' };
+
+// The membership plugin prints English dates (« 7 February 2027 »).
+export function frenchDate(value: string): string {
+  return value.replace(/\b(january|february|march|april|may|june|july|august|september|october|november|december)\b/gi, (month) => MONTHS[month.toLowerCase()]);
+}
