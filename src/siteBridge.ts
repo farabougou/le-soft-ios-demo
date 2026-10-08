@@ -95,7 +95,10 @@ export function createSiteScript(request: WebRequest, theme: ReaderTheme, fontSc
       style.textContent = '[data-le-soft-offer], a[href*="membership-join"], a[href*="swpm_payment"], a[href*="checkout"],' +
         ' a[href*="/s-abonner"], form[action*="swpm_payment"], form[action*="membership-join"],' +
         ' .pricing-table, .subscription-plan, .lesoft-pricing, .lesoft-no-app, button[name="commander"] { display: none !important; }' +
-        ' img[data-le-soft-cover] { clip-path: inset(0 0 8.5% 0) !important; }';
+        ' img[data-le-soft-cover] { clip-path: inset(0 0 8.5% 0) !important; }' +
+        // Popup Maker windows (promo codes, currency picker…) never open in the app.
+        ' .pum, .pum-overlay, .popmake, [id^="pum-"] { display: none !important; }' +
+        ' html.pum-open, html.pum-open body { overflow: auto !important; }';
       root.appendChild(style);
     }
     if (!document.body) return;

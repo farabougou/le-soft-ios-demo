@@ -62,6 +62,8 @@ async function browserTests(){
  tw.dataLayer.push(['config','G-TEST']);assert.equal(tw.dataLayer.length,0,'gtag commands dropped');tw.dataLayer=[];assert.equal(tw.dataLayer.length,0,'dataLayer stays inert');
  const sc=tw.document.createElement('script');sc.setAttribute('src','https://www.googletagmanager.com/gtag/js?id=G-TEST');tw.document.head.appendChild(sc);await new Promise(r=>setTimeout(r,0));assert.equal(sc.getAttribute('src'),null,'tracker script neutralised');
  const ok=tw.document.createElement('script');ok.setAttribute('src','https://lesoftpost.com/wp-content/theme.js');tw.document.head.appendChild(ok);await new Promise(r=>setTimeout(r,0));assert.equal(ok.getAttribute('src'),'https://lesoftpost.com/wp-content/theme.js','site scripts kept');track.dom.window.close();
+ const pum=fixture('<html class="pum-open"><head></head><body><div id="pum-5436" class="pum pum-overlay popmake-overlay"><div class="pum-container">Code promo – 30 % de réduction</div></div><p id="news">Actualité</p></body></html>','site',9,'https://lesoftpost.com/');
+ assert.equal(pum.dom.window.getComputedStyle(pum.dom.window.document.getElementById('pum-5436')).display,'none','Popup Maker hidden');assert.notEqual(pum.dom.window.getComputedStyle(pum.dom.window.document.getElementById('news')).display,'none');pum.dom.window.close();
  const guest=fixture('<input type="password">','account',3);assert.equal(guest.messages.at(-1).connected,false);guest.dom.window.close();
  const hostile=fixture('<input type="password">','account',4,'https://evil.example/');assert.equal(hostile.messages.length,0);hostile.dom.window.close();
  console.log('PASS: feed, images, source trust, kiosk, authenticated labels, reader isolation, preserved paywall and hidden offers');
