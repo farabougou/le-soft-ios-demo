@@ -30,7 +30,7 @@ function lesoft_is_ios_app() {
 function lesoft_is_purchase_url($url) {
 	$path  = (string) wp_parse_url($url, PHP_URL_PATH);
 	$query = (string) wp_parse_url($url, PHP_URL_QUERY);
-	return (bool) preg_match('#^/(membership-join|s-abonner|abonnements?|tarifs?|offres?|pricing|checkout|cart|panier)(/|$)#i', $path)
+	return (bool) preg_match('#^/(membership-join|s-abonner|abonnements?|tarifs?|offres?|pricing|checkout|cart|panier|boutique|shop|produits?|product|commande)(/|$)#i', $path)
 		|| (bool) preg_match('/swpm_payment|swpm_paypal|add-to-cart/i', $query);
 }
 

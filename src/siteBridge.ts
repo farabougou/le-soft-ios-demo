@@ -59,9 +59,9 @@ export function createSiteScript(request: WebRequest, theme: ReaderTheme, fontSc
 
   // Reader app (App Store 3.1.3(a)): no price, offer or payment method is shown in the app.
   // Works without any server change; the optional WordPress plugin in server/wordpress does the same server-side.
-  var OFFER_LINK = /s['’]\s?abonner|abonnez|nos offres|tarif|rejoindre|join us|souscri|payer|paiement|acheter|orange money|moov money/i;
+  var OFFER_LINK = /s['’]\s?abonner|abonnez|nos offres|tarif|rejoindre|join us|souscri|payer|paiement|acheter|ajouter au panier|\bpanier\b|\bcommander\b|orange money|moov money/i;
   // Same rule as webNavigation.ts: only the first path segment, so article slugs about « abonnements » stay.
-  var OFFER_PATH = /^\/(membership-join|s-abonner|abonnements?|tarifs?|offres?|pricing|checkout|cart|panier)(\/|$)/i;
+  var OFFER_PATH = /^\/(membership-join|s-abonner|abonnements?|tarifs?|offres?|pricing|checkout|cart|panier|boutique|shop|produits?|product|commande)(\/|$)/i;
   function offerHref(href) {
     if (!href || /^(#|mailto:|tel:|javascript:)/i.test(href)) return false;
     try { var u = new URL(href, location.href); return /swpm_payment|swpm_paypal|add-to-cart/i.test(u.search) || (/(^|\.)lesoftpost\.com$/i.test(u.hostname) && OFFER_PATH.test(u.pathname)); }
@@ -98,6 +98,9 @@ export function createSiteScript(request: WebRequest, theme: ReaderTheme, fontSc
         ' img[data-le-soft-cover] { clip-path: inset(0 0 8.5% 0) !important; }' +
         // Popup Maker windows (promo codes, currency picker…) never open in the app.
         ' .pum, .pum-overlay, .popmake, [id^="pum-"] { display: none !important; }' +
+        // WooCommerce prices and cart buttons, and user comments (no moderation tools in the app).
+        ' .woocommerce-Price-amount, .add_to_cart_button, .single_add_to_cart_button, form.cart, .widget_shopping_cart,' +
+        ' #comments, .comments-area, #respond, .comment-respond { display: none !important; }' +
         ' html.pum-open, html.pum-open body { overflow: auto !important; }';
       root.appendChild(style);
     }
