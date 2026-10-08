@@ -9,6 +9,47 @@ export function createSiteScript(request: WebRequest, theme: ReaderTheme, fontSc
   var options = ${options};
   if (!/^https:\/\/(www\.)?lesoftpost\.com(?:\/|$)/i.test(location.href)) return true;
   window.__leSoftOptions = options;
+
+  // No analytics inside the app (Google Analytics via MonsterInsights, WP Statistics):
+  // the App Store privacy label then only covers the account data the reader needs.
+  if (!window.__leSoftNoTracking) {
+    window.__leSoftNoTracking = true;
+    var TRACKER = /google-analytics\.com|googletagmanager\.com|analytics\.google\.com|doubleclick\.net|wp-statistics|wp_statistics/i;
+    try {
+      var inert = Object.freeze({ push: function () { return 0; }, length: 0 });
+      Object.defineProperty(window, 'dataLayer', { configurable: false, get: function () { return inert; }, set: function () {} });
+    } catch (_) {}
+    if (window.fetch) {
+      var realFetch = window.fetch;
+      window.fetch = function (input) {
+        var url = typeof input === 'string' ? input : (input && input.url) || '';
+        if (TRACKER.test(String(url))) return Promise.reject(new TypeError('blocked'));
+        return realFetch.apply(this, arguments);
+      };
+    }
+    if (window.XMLHttpRequest) {
+      var realOpen = window.XMLHttpRequest.prototype.open;
+      window.XMLHttpRequest.prototype.open = function (method, url) {
+        if (TRACKER.test(String(url))) { this.__leSoftBlocked = true; url = 'about:blank'; }
+        return realOpen.apply(this, [method, url].concat(Array.prototype.slice.call(arguments, 2)));
+      };
+      var realSend = window.XMLHttpRequest.prototype.send;
+      window.XMLHttpRequest.prototype.send = function () { if (!this.__leSoftBlocked) return realSend.apply(this, arguments); };
+    }
+    if (navigator.sendBeacon) {
+      var realBeacon = navigator.sendBeacon.bind(navigator);
+      navigator.sendBeacon = function (url, data) { return TRACKER.test(String(url)) ? true : realBeacon(url, data); };
+    }
+    // Tracker scripts and pixels added later are emptied before the browser fetches them.
+    var stopTag = function (node) {
+      if (node && /^(SCRIPT|IMG|IFRAME)$/.test(node.tagName) && TRACKER.test(node.getAttribute('src') || '')) {
+        node.removeAttribute('src'); if (node.tagName === 'SCRIPT') node.type = 'text/plain';
+      }
+    };
+    new MutationObserver(function (records) {
+      records.forEach(function (r) { Array.prototype.forEach.call(r.addedNodes, stopTag); });
+    }).observe(document.documentElement || document, { childList: true, subtree: true });
+  }
   
   function send(payload) {
     payload.url = location.href;

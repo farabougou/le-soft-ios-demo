@@ -58,6 +58,10 @@ async function browserTests(){
  const cd=cover.dom.window.document;const size=(el,w,h)=>{Object.defineProperty(el,'naturalWidth',{value:w});Object.defineProperty(el,'naturalHeight',{value:h});};
  size(cd.getElementById('une'),800,1130);size(cd.getElementById('photo'),1200,800);cover.dom.window.__leSoftCheck();
  assert.ok(cd.getElementById('une').hasAttribute('data-le-soft-cover'),'front page footer cropped');assert.ok(!cd.getElementById('photo').hasAttribute('data-le-soft-cover'),'landscape photo untouched');cover.dom.window.close();
+ const track=fixture('<html><head></head><body></body></html>','site',8,'https://lesoftpost.com/');const tw=track.dom.window;
+ tw.dataLayer.push(['config','G-TEST']);assert.equal(tw.dataLayer.length,0,'gtag commands dropped');tw.dataLayer=[];assert.equal(tw.dataLayer.length,0,'dataLayer stays inert');
+ const sc=tw.document.createElement('script');sc.setAttribute('src','https://www.googletagmanager.com/gtag/js?id=G-TEST');tw.document.head.appendChild(sc);await new Promise(r=>setTimeout(r,0));assert.equal(sc.getAttribute('src'),null,'tracker script neutralised');
+ const ok=tw.document.createElement('script');ok.setAttribute('src','https://lesoftpost.com/wp-content/theme.js');tw.document.head.appendChild(ok);await new Promise(r=>setTimeout(r,0));assert.equal(ok.getAttribute('src'),'https://lesoftpost.com/wp-content/theme.js','site scripts kept');track.dom.window.close();
  const guest=fixture('<input type="password">','account',3);assert.equal(guest.messages.at(-1).connected,false);guest.dom.window.close();
  const hostile=fixture('<input type="password">','account',4,'https://evil.example/');assert.equal(hostile.messages.length,0);hostile.dom.window.close();
  console.log('PASS: feed, images, source trust, kiosk, authenticated labels, reader isolation, preserved paywall and hidden offers');
