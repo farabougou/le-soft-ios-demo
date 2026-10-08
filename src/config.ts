@@ -11,7 +11,7 @@ export const BRAND = {
   privacyUrl: 'https://docs.google.com/document/d/1-Fb4z1K4HlRgBkLUmRemcQ600Y9Kdjsz7RmYx2CN3t0/preview',
 };
 
-export const RELEASE = '6';
+export const RELEASE = '7';
 
 export function officialUrl(value: string): string | undefined {
   try {
